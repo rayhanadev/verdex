@@ -1,0 +1,19 @@
+.changeset/ship-compiled-dist.md
+  s_58f559fc129726::t_2e4c555e164c76 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "5fb4b82a167b5237784fcd9080bc73dd74468eb2",
+  "prompts": {},
+  "sessions": {
+    "s_58f559fc129726": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d921c7-9623-4f88-9274-04638c9c7a6d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rayhan Noufal Arayilakath <me@rayhanadev.com>"
+    }
+  }
+}
