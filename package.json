@@ -1,6 +1,6 @@
 {
   "name": "@rayhanadev/verdex",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A small, type-safe, OPA-inspired policy engine for TypeScript. Rules are typed functions; queries and calls are fully inferred. Zero runtime dependencies.",
   "keywords": [
     "abac",
