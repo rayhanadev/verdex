@@ -1,0 +1,21 @@
+SECURITY.md
+  s_58f559fc129726::t_5df7aec8edc08b 21
+.github/ISSUE_TEMPLATE/bug-report.md
+  s_58f559fc129726::t_fb52d7b46315b4 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "0bd6e61d40ed26ae2f2332c4728b76b59f051c3c",
+  "prompts": {},
+  "sessions": {
+    "s_58f559fc129726": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d921c7-9623-4f88-9274-04638c9c7a6d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rayhan Noufal Arayilakath <me@rayhanadev.com>"
+    }
+  }
+}
