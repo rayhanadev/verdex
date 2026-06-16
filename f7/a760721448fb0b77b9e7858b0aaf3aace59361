@@ -1,0 +1,28 @@
+.changeset/config.json
+  s_58f559fc129726::t_2191d37a1171d8 3
+package.json
+  s_58f559fc129726::t_c2fcaa21933a15 43-44
+  s_58f559fc129726::t_e727f588b68a9c 60
+.github/workflows/publish-any-commit.yml
+  s_58f559fc129726::t_1a75e3d4e2bdf1 1-33
+bun.lock
+  s_58f559fc129726::t_82f31fd8cdc689 8,49-50,59-60,341-342,351-352,483-484,591-592,615-617
+.github/workflows/release.yml
+  s_58f559fc129726::t_f99ae868eb90af 4-5,7-9,12,18-22,38-40,45,47-48,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "f7a760721448fb0b77b9e7858b0aaf3aace59361",
+  "prompts": {},
+  "sessions": {
+    "s_58f559fc129726": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d921c7-9623-4f88-9274-04638c9c7a6d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rayhan Noufal Arayilakath <me@rayhanadev.com>"
+    }
+  }
+}
