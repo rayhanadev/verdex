@@ -1,0 +1,31 @@
+tests/coverage-extra.test.ts
+  s_58f559fc129726::t_45d393c16c6ef9 22-28
+  s_58f559fc129726::t_078c4cf37062a6 1-21,29-86
+codecov.yml
+  s_58f559fc129726::t_c37d3846a923a2 1-20
+.github/workflows/release.yml
+  s_58f559fc129726::t_8660824f86b15e 20-22,26-27,34-43,47-49,57-74
+package.json
+  s_58f559fc129726::t_66b41cc02c3f53 43
+  s_58f559fc129726::t_873d20add4963d 56
+.github/workflows/ci.yml
+  s_58f559fc129726::t_403261132f2232 68-77
+README.md
+  s_58f559fc129726::t_7ae5ebb90729c4 4-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "306e2a29595697aff21914e4ebd5c5d98e8ee9c3",
+  "prompts": {},
+  "sessions": {
+    "s_58f559fc129726": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d921c7-9623-4f88-9274-04638c9c7a6d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rayhan Noufal Arayilakath <me@rayhanadev.com>"
+    }
+  }
+}
