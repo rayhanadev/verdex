@@ -1,0 +1,35 @@
+.github/workflows/ci.yml
+  s_58f559fc129726::t_1d1c3c6c4c3f7b 21,41,58
+.github/workflows/publish-any-commit.yml
+  s_58f559fc129726::t_1d1c3c6c4c3f7b 17
+package.json
+  s_58f559fc129726::t_d71666b2ee9e1f 29,35-37,40-47
+  s_58f559fc129726::t_fc863d04cff980 55
+CONTRIBUTING.md
+  s_58f559fc129726::t_6c6dcc0775a466 55
+  s_58f559fc129726::t_f2238f26080fb0 63,65
+CHANGELOG.md
+  s_58f559fc129726::t_58a9d757019324 13
+README.md
+  s_58f559fc129726::t_40113505529177 42
+tsdown.config.ts
+  s_58f559fc129726::t_3a747598f2e841 5
+.github/workflows/release.yml
+  s_58f559fc129726::t_1d1c3c6c4c3f7b 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "e79513e16543bed0d35f4d42dc63d62adb6abedd",
+  "prompts": {},
+  "sessions": {
+    "s_58f559fc129726": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d921c7-9623-4f88-9274-04638c9c7a6d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Rayhan Noufal Arayilakath <me@rayhanadev.com>"
+    }
+  }
+}
