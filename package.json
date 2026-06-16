@@ -1,0 +1,13 @@
+{
+  "name": "policy-engine",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "zod": "^4.4.1"
+  },
+  "peerDependencies": {
+    "typescript": "7"
+  }
+}
