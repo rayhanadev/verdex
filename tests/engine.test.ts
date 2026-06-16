@@ -1,10 +1,10 @@
-import { test, expect, describe } from "bun:test";
+import { test, expect, describe } from "vitest";
 import { z } from "zod";
 import {
   Bundle,
   ConflictError,
+  DuplicatePackageError,
   Engine,
-  Module,
   UnknownRuleError,
   ValidationError,
   bundle,
@@ -31,9 +31,7 @@ describe("complete rules", () => {
     const Input = z.object({ role: z.string() });
     const m = module("authz", { input: Input })
       .default("allow", false)
-      .complete("allow", (ctx) =>
-        ctx.input.role === "admin" ? true : undefined,
-      );
+      .complete("allow", (ctx) => (ctx.input.role === "admin" ? true : undefined));
     const e = new Engine().add(m);
     const d = e.query("authz.allow", { input: { role: "guest" } });
     if (d.defined) expect(d.result).toBe(false);
@@ -72,9 +70,7 @@ describe("set rules (partial set)", () => {
       .set("deny", function* (ctx) {
         if (ctx.input.role === "banned") yield "user is banned";
       });
-    const d = new Engine()
-      .add(m)
-      .query("authz.deny", { input: { authed: false, role: "banned" } });
+    const d = new Engine().add(m).query("authz.deny", { input: { authed: false, role: "banned" } });
     if (d.defined) {
       // typed as string[], no <T> needed
       expect(d.result).toEqual(["must authenticate", "user is banned"]);
@@ -127,9 +123,7 @@ describe("functions and typed ctx.call", () => {
   test("ctx.call is typed via the registry — args & return inferred", () => {
     const User = z.object({ role: z.string() });
     const m = module("authz")
-      .func("isAdmin", { args: [User], output: z.boolean() }, (_ctx, user) =>
-        user.role === "admin",
-      )
+      .func("isAdmin", { args: [User], output: z.boolean() }, (_ctx, user) => user.role === "admin")
       .complete("allow", (ctx) =>
         // ctx.call("authz.isAdmin", user) — user typed as {role:string}, return boolean
         ctx.call("authz.isAdmin", { role: "admin" }) ? true : undefined,
@@ -140,17 +134,12 @@ describe("functions and typed ctx.call", () => {
 
   test("function arg validation throws on bad input", () => {
     const User = z.object({ role: z.string() });
-    const m = module("p").func(
-      "needsRole",
-      { args: [User], output: z.boolean() },
-      () => true,
-    );
+    const m = module("p").func("needsRole", { args: [User], output: z.boolean() }, () => true);
     // Use the string fallback to send a bad arg through (typed call would error at compile-time).
     const m2 = module("p2").complete("v", (ctx) => {
-      const r = (ctx.call as (path: string, ...args: unknown[]) => unknown)(
-        "p.needsRole",
-        { wrong: true },
-      );
+      const r = (ctx.call as (path: string, ...args: unknown[]) => unknown)("p.needsRole", {
+        wrong: true,
+      });
       return r as boolean;
     });
     const e = new Engine().add(m).add(m2);
@@ -199,9 +188,7 @@ describe("schema validation", () => {
     const Input = z.object({ role: z.enum(["admin", "guest"]) });
     const m = module("authz", { input: Input }).complete("allow", () => true);
     const e = new Engine().add(m);
-    expect(() =>
-      e.query("authz.allow", { input: { role: "bogus" } }),
-    ).toThrow(ValidationError);
+    expect(() => e.query("authz.allow", { input: { role: "bogus" } })).toThrow(ValidationError);
   });
 
   test("data validation rejects bad data", () => {
@@ -226,10 +213,7 @@ describe("schema validation", () => {
 describe("bundles", () => {
   test("bundle() infers registry from its modules", () => {
     const Data = z.object({ name: z.string() });
-    const m = module("p", { data: Data }).complete(
-      "greet",
-      (ctx) => `hello ${ctx.data.name}`,
-    );
+    const m = module("p", { data: Data }).complete("greet", (ctx) => `hello ${ctx.data.name}`);
     const b = bundle({ modules: [m], data: { name: "world" } });
     const d = new Engine().add(b).query("p.greet");
     if (d.defined) expect(d.result).toBe("hello world");
@@ -276,9 +260,87 @@ describe("match() helper", () => {
 
   test("supports value resolvers (functions)", () => {
     const r = match("hi")
-      .when((s) => s === "hi", (s) => s.toUpperCase())
+      .when(
+        (s) => s === "hi",
+        (s) => s.toUpperCase(),
+      )
       .otherwise("");
     expect(r).toBe("HI");
+  });
+});
+
+describe("duplicate package names", () => {
+  test("adding two modules with the same package name throws", () => {
+    const a = module("authz").complete("allow", () => true);
+    const b = module("authz").complete("deny", () => true);
+    expect(() => new Engine().add(a).add(b)).toThrow(DuplicatePackageError);
+  });
+
+  test("the error names the duplicated package", () => {
+    const a = module("authz").complete("allow", () => true);
+    const b = module("authz").complete("deny", () => true);
+    let caught: unknown;
+    try {
+      new Engine().add(a).add(b);
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(DuplicatePackageError);
+    expect((caught as DuplicatePackageError).packageName).toBe("authz");
+    expect((caught as DuplicatePackageError).name).toBe("DuplicatePackageError");
+  });
+
+  test("re-adding the same module instance throws", () => {
+    const a = module("authz").complete("allow", () => true);
+    expect(() => new Engine().add(a).add(a)).toThrow(DuplicatePackageError);
+  });
+
+  test("a bundle containing two same-package modules throws", () => {
+    const a = module("authz").complete("allow", () => true);
+    const b = module("authz").complete("deny", () => true);
+    const bun = new Bundle({ modules: [a, b] });
+    expect(() => new Engine().add(bun)).toThrow(DuplicatePackageError);
+  });
+
+  test("a module collides with one already supplied by a bundle", () => {
+    const a = module("authz").complete("allow", () => true);
+    const bun = bundle({ modules: [a] });
+    const dup = module("authz").complete("deny", () => true);
+    expect(() => new Engine().add(bun).add(dup)).toThrow(DuplicatePackageError);
+  });
+
+  test("nested package names ('a' vs 'a.b') do not collide", () => {
+    const parent = module("a").complete("v", () => 1);
+    const child = module("a.b").complete("v", () => 2);
+    const e = new Engine().add(parent).add(child);
+    const p = e.query("a.v");
+    const c = e.query("a.b.v");
+    if (p.defined) expect(p.result).toBe(1);
+    if (c.defined) expect(c.result).toBe(2);
+  });
+
+  test("distinct package names still add cleanly", () => {
+    const a = module("authz").complete("allow", () => true);
+    const b = module("rbac").complete("ok", () => true);
+    const e = new Engine().add(a).add(b);
+    expect(e.query("authz.allow").defined).toBe(true);
+    expect(e.query("rbac.ok").defined).toBe(true);
+  });
+
+  test("a rejected add leaves the engine usable (state unchanged)", () => {
+    const a = module("authz").complete("allow", () => true);
+    const dupBundle = new Bundle({
+      modules: [module("rbac").complete("ok", () => true), module("authz").complete("x", () => 1)],
+    });
+    const e = new Engine().add(a);
+    expect(() => e.add(dupBundle)).toThrow(DuplicatePackageError);
+    // The half-applied bundle must not have leaked: rbac is not registered, and
+    // the original authz rule still resolves.
+    expect(e.query("authz.allow").defined).toBe(true);
+    // rbac.ok is not a known path on this engine's type, so query it through the
+    // untyped surface to assert it never got registered at runtime.
+    const untyped = e as unknown as { query(path: string): { defined: boolean } };
+    expect(() => untyped.query("rbac.ok")).toThrow(UnknownRuleError);
   });
 });
 
@@ -288,12 +350,8 @@ describe("when() and contains() clause sugar", () => {
     const m = module("authz", { input: Input })
       .default("allow", false)
       .when("allow", (ctx) => ctx.input.role === "admin")
-      .when("allow", (ctx) =>
-        ctx.input.role === "member" && ctx.input.action !== "delete",
-      )
-      .when("allow", (ctx) =>
-        ctx.input.role === "guest" && ctx.input.action === "read",
-      );
+      .when("allow", (ctx) => ctx.input.role === "member" && ctx.input.action !== "delete")
+      .when("allow", (ctx) => ctx.input.role === "guest" && ctx.input.action === "read");
     const e = new Engine().add(m);
 
     const a = e.query("authz.allow", { input: { role: "admin", action: "delete" } });
@@ -324,22 +382,13 @@ describe("when() and contains() clause sugar", () => {
   test("m.contains yields values into a partial set", () => {
     const Input = z.object({ banned: z.boolean(), guest: z.boolean() });
     const m = module("authz", { input: Input })
-      .contains(
-        "deny_reasons",
-        (ctx) => ctx.input.banned,
-        "user is banned",
-      )
-      .contains(
-        "deny_reasons",
-        (ctx) => ctx.input.guest,
-        "guests can only read",
-      );
+      .contains("deny_reasons", (ctx) => ctx.input.banned, "user is banned")
+      .contains("deny_reasons", (ctx) => ctx.input.guest, "guests can only read");
     const e = new Engine().add(m);
     const d = e.query("authz.deny_reasons", {
       input: { banned: true, guest: true },
     });
-    if (d.defined)
-      expect(d.result).toEqual(["user is banned", "guests can only read"]);
+    if (d.defined) expect(d.result).toEqual(["user is banned", "guests can only read"]);
   });
 });
 
@@ -353,17 +402,13 @@ describe("type-level checks (compile-only)", () => {
       e.query("authz.allwo");
     }
     // Runtime sanity: an unknown path passed through the escape hatch still throws.
-    expect(() =>
-      (e.query as (p: string) => unknown)("authz.allwo"),
-    ).toThrow(UnknownRuleError);
+    expect(() => (e.query as (p: string) => unknown)("authz.allwo")).toThrow(UnknownRuleError);
   });
 
   test("ctx.call wrong arg type errors at compile time", () => {
     const User = z.object({ role: z.string() });
     const m = module("authz")
-      .func("isAdmin", { args: [User], output: z.boolean() }, (_ctx, u) =>
-        u.role === "admin",
-      )
+      .func("isAdmin", { args: [User], output: z.boolean() }, (_ctx, u) => u.role === "admin")
       .complete("allow", (ctx) => {
         if (false as boolean) {
           // @ts-expect-error — number not assignable to {role:string}
@@ -381,12 +426,8 @@ describe("proxy access (ctx.<pkg>.<rule>, engine.<pkg>.<rule>)", () => {
   test("ctx.<pkg>.<func>(...) calls the function with typed args", () => {
     const User = z.object({ role: z.string() });
     const m = module("authz")
-      .func("isAdmin", { args: [User], output: z.boolean() }, (_ctx, u) =>
-        u.role === "admin",
-      )
-      .complete("allow", (ctx) =>
-        ctx.authz.isAdmin({ role: "admin" }) ? true : undefined,
-      );
+      .func("isAdmin", { args: [User], output: z.boolean() }, (_ctx, u) => u.role === "admin")
+      .complete("allow", (ctx) => (ctx.authz.isAdmin({ role: "admin" }) ? true : undefined));
     const d = new Engine().add(m).query("authz.allow");
     if (d.defined) expect(d.result).toBe(true);
   });
@@ -426,6 +467,29 @@ describe("proxy access (ctx.<pkg>.<rule>, engine.<pkg>.<rule>)", () => {
     expect(() => module("query.subroute")).toThrow(/reserved/);
   });
 
+  test("module() reserves engine/ctx member names that the proxies would shadow", () => {
+    // Real Engine members: a package here would be shadowed by the member.
+    expect(() => module("add")).toThrow(/reserved/);
+    expect(() => module("put")).toThrow(/reserved/);
+    expect(() => module("store")).toThrow(/reserved/);
+    expect(() => module("call")).toThrow(/reserved/);
+    // The private `modules` field — the previously-silent footgun.
+    expect(() => module("modules")).toThrow(/reserved/);
+    expect(() => module("modules.foo")).toThrow(/reserved/);
+    // Reachable via the prototype chain on both proxy targets.
+    expect(() => module("constructor")).toThrow(/reserved/);
+  });
+
+  test("inherited Object.prototype names are not shadowed on the ctx proxy", () => {
+    // `hasOwnProperty` is NOT a real ctx member, so a sibling package by that name
+    // must remain reachable through the ctx proxy (own-property check, not `in`).
+    const helper = module("hasOwnProperty").func("ping", () => "pong");
+    const caller = module("p").complete("v", (ctx) => ctx.call("hasOwnProperty.ping"));
+    const e = new Engine().add(helper).add(caller);
+    const d = e.query("p.v");
+    expect(d.defined && d.result).toBe("pong");
+  });
+
   test("@ts-expect-error: typo in proxy path errors at compile time", () => {
     const m = module("authz").complete("allow", () => true);
     const e = new Engine().add(m);
@@ -439,9 +503,7 @@ describe("proxy access (ctx.<pkg>.<rule>, engine.<pkg>.<rule>)", () => {
   test("@ts-expect-error: ctx proxy wrong arg type errors at compile time", () => {
     const User = z.object({ role: z.string() });
     const m = module("authz")
-      .func("isAdmin", { args: [User], output: z.boolean() }, (_ctx, u) =>
-        u.role === "admin",
-      )
+      .func("isAdmin", { args: [User], output: z.boolean() }, (_ctx, u) => u.role === "admin")
       .complete("allow", (ctx) => {
         if (false as boolean) {
           // @ts-expect-error — number not assignable to {role:string}

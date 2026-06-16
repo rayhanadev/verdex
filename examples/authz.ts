@@ -19,39 +19,25 @@ const Data = z.object({ users: z.array(User) });
 
 const authz = module("authz", { input: Input, data: Data })
   .default("allow", false)
-  .func("isAdmin", { args: [User], output: z.boolean() }, (_ctx, user) =>
-    user.role === "admin",
-  )
+  .func("isAdmin", { args: [User], output: z.boolean() }, (_ctx, user) => user.role === "admin")
   .complete("allow", (ctx) =>
     match(ctx.input)
       .when((i) => i.user.banned === true, undefined)
       // Proxy form: ctx.authz.isAdmin(user) instead of ctx.call("authz.isAdmin", user)
       .when((i) => ctx.authz.isAdmin(i.user), true)
-      .when(
-        (i) => i.user.role === "member" && i.action.type !== "delete",
-        true,
-      )
-      .when(
-        (i) => i.user.role === "guest" && i.action.type === "read",
-        true,
-      )
+      .when((i) => i.user.role === "member" && i.action.type !== "delete", true)
+      .when((i) => i.user.role === "guest" && i.action.type === "read", true)
       .otherwise(undefined),
   )
+  .contains("deny_reasons", (ctx) => ctx.input.user.banned === true, "user is banned")
   .contains(
     "deny_reasons",
-    (ctx) => ctx.input.user.banned === true,
-    "user is banned",
-  )
-  .contains(
-    "deny_reasons",
-    (ctx) =>
-      ctx.input.user.role === "guest" && ctx.input.action.type !== "read",
+    (ctx) => ctx.input.user.role === "guest" && ctx.input.action.type !== "read",
     "guests can only read",
   )
   .contains(
     "deny_reasons",
-    (ctx) =>
-      ctx.input.user.role === "member" && ctx.input.action.type === "delete",
+    (ctx) => ctx.input.user.role === "member" && ctx.input.action.type === "delete",
     "members cannot delete",
   )
   .object("user_index", function* (ctx) {
@@ -75,12 +61,33 @@ const engine = new Engine().add(b);
 type AuthInput = z.infer<typeof Input>;
 
 const cases: Array<{ label: string; input: AuthInput }> = [
-  { label: "admin deletes a doc", input: { user: { id: "u1", role: "admin" }, action: { type: "delete", resource: "doc/1" } } },
-  { label: "member writes", input: { user: { id: "u2", role: "member" }, action: { type: "write", resource: "doc/1" } } },
-  { label: "member tries to delete", input: { user: { id: "u2", role: "member" }, action: { type: "delete", resource: "doc/1" } } },
-  { label: "guest reads", input: { user: { id: "u3", role: "guest" }, action: { type: "read", resource: "doc/1" } } },
-  { label: "guest tries to write", input: { user: { id: "u3", role: "guest" }, action: { type: "write", resource: "doc/1" } } },
-  { label: "banned member writes", input: { user: { id: "u4", role: "member", banned: true }, action: { type: "write", resource: "doc/1" } } },
+  {
+    label: "admin deletes a doc",
+    input: { user: { id: "u1", role: "admin" }, action: { type: "delete", resource: "doc/1" } },
+  },
+  {
+    label: "member writes",
+    input: { user: { id: "u2", role: "member" }, action: { type: "write", resource: "doc/1" } },
+  },
+  {
+    label: "member tries to delete",
+    input: { user: { id: "u2", role: "member" }, action: { type: "delete", resource: "doc/1" } },
+  },
+  {
+    label: "guest reads",
+    input: { user: { id: "u3", role: "guest" }, action: { type: "read", resource: "doc/1" } },
+  },
+  {
+    label: "guest tries to write",
+    input: { user: { id: "u3", role: "guest" }, action: { type: "write", resource: "doc/1" } },
+  },
+  {
+    label: "banned member writes",
+    input: {
+      user: { id: "u4", role: "member", banned: true },
+      action: { type: "write", resource: "doc/1" },
+    },
+  },
 ];
 
 for (const c of cases) {
@@ -96,10 +103,7 @@ for (const c of cases) {
 const userIndex = engine.query("authz.user_index", {
   input: { user: { id: "u1", role: "admin" }, action: { type: "read", resource: "_" } },
 });
-console.log(
-  "\nuser_index:",
-  JSON.stringify(userIndex.defined ? userIndex.result : null, null, 2),
-);
+console.log("\nuser_index:", JSON.stringify(userIndex.defined ? userIndex.result : null, null, 2));
 
 const overridden = engine.authz.allow({
   input: { user: { id: "u3", role: "guest" }, action: { type: "write", resource: "doc/1" } },

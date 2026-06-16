@@ -9,9 +9,7 @@ export namespace StandardSchemaV1 {
   export interface Props<Input = unknown, Output = Input> {
     readonly version: 1;
     readonly vendor: string;
-    readonly validate: (
-      value: unknown,
-    ) => Result<Output> | Promise<Result<Output>>;
+    readonly validate: (value: unknown) => Result<Output> | Promise<Result<Output>>;
     readonly types?: Types<Input, Output> | undefined;
   }
 
@@ -48,8 +46,3 @@ export namespace StandardSchemaV1 {
     Schema["~standard"]["types"]
   >["output"];
 }
-
-// Helper to extract the validated output type from an optional schema slot.
-export type InferOutputOr<S, Fallback> = S extends StandardSchemaV1
-  ? StandardSchemaV1.InferOutput<S>
-  : Fallback;

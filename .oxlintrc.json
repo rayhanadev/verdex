@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "env": {
+    "builtin": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "typescript/no-this-alias": "off",
+    "no-underscore-dangle": "off",
+    "unicorn/consistent-function-scoping": "off"
+  },
+  "ignorePatterns": ["node_modules", "dist", "coverage"]
+}

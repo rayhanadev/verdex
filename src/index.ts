@@ -1,7 +1,7 @@
 export { Engine } from "./engine.ts";
 export { Module, Package, module, RESERVED } from "./module.ts";
 export { Bundle, bundle, type RegistryOf } from "./bundle.ts";
-export { Store } from "./store.ts";
+export { Store, type ReadonlyStore } from "./store.ts";
 export { match, type Matcher } from "./match.ts";
 export {
   Rule,
@@ -22,6 +22,10 @@ export {
   UnknownRuleError,
   RuleKindMismatchError,
   ValidationError,
+  AsyncSchemaError,
+  RuleQueryError,
+  OverrideError,
+  DuplicatePackageError,
   validate,
 } from "./errors.ts";
 export type { StandardSchemaV1 } from "./schema.ts";
