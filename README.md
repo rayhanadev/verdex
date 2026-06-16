@@ -1,6 +1,8 @@
 # verdex
 
 [![npm](https://img.shields.io/npm/v/@rayhanadev/verdex.svg)](https://www.npmjs.com/package/@rayhanadev/verdex)
+[![CI](https://github.com/rayhanadev/verdex/actions/workflows/ci.yml/badge.svg)](https://github.com/rayhanadev/verdex/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/rayhanadev/verdex/branch/main/graph/badge.svg)](https://codecov.io/gh/rayhanadev/verdex)
 [![license](https://img.shields.io/npm/l/@rayhanadev/verdex.svg)](./LICENSE)
 [![types](https://img.shields.io/npm/types/@rayhanadev/verdex.svg)](https://www.typescriptlang.org/)
 
