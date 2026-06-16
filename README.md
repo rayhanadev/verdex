@@ -39,7 +39,7 @@ bun add @rayhanadev/verdex
 bun add zod # or any Standard Schema validator
 ```
 
-> verdex ships TypeScript source, so consume it from any toolchain that resolves `.ts`: Bun, a bundler (Vite/esbuild/Rollup), Node ≥ 22.18 (type stripping), Deno, or `tsx`.
+> Ships compiled ESM **and** CommonJS with type declarations and sourcemaps, so it works out of the box in Node, Bun, Deno, and any bundler — no build step or `.ts` loader on your end.
 
 ## Writing policies
 

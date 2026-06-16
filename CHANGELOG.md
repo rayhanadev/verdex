@@ -10,6 +10,7 @@ Initial public release — a small, type-safe, OPA-inspired policy engine for Ty
 - **OPA-style rule kinds** — `complete`, `set` (partial set), `object` (partial object), `func`, plus `default`, and `when` / `contains` clause sugar. A `match()` helper for first-match-wins decisions.
 - **Standard Schema validation** for `input`, `data`, and function args/output (Zod, Valibot, ArkType, Effect Schema). Synchronous only — async schemas throw `AsyncSchemaError`.
 - **`Decision<T>`** discriminated result; query-scoped `with` overrides; typed `bundle()` factory.
+- **Ships compiled ESM + CommonJS** (`dist/`) with type declarations and sourcemaps — works in Node, Bun, Deno, and any bundler with no build step on your end.
 
 ### Safety & semantics
 

@@ -52,7 +52,7 @@ verdex is a single published package, `@rayhanadev/verdex`. It has zero runtime 
 
 ### Writing tests
 
-Tests use [Vitest](https://vitest.dev) and live in `tests/`. They are **not** co-located with the source, because verdex ships its TypeScript source (`src/`) directly and we don't want test files in the published package.
+Tests use [Vitest](https://vitest.dev) and live in `tests/`, separate from `src/`.
 
 ```sh
 bun run test        # run once
@@ -60,11 +60,9 @@ bun run test:watch  # watch mode
 bun run coverage    # with coverage
 ```
 
-### Ship-source model
+### Build & publishing
 
-verdex publishes its TypeScript source rather than compiled output. The package's `files` field is `["src", "README.md", "LICENSE"]` and its `exports` point at `./src/index.ts`. The `dist/` directory produced by `bun run build` is gitignored and not published — `build` exists purely as a tsdown smoke test to confirm the package still bundles cleanly.
-
-Keep this in mind when contributing: anything added under `src/` ships to users, so avoid putting fixtures, scratch files, or test helpers there.
+verdex is bundled with [tsdown](https://tsdown.dev): `src/index.ts` is compiled into `dist/` as both ESM (`index.mjs`) and CommonJS (`index.cjs`), each with type declarations and sourcemaps. The published package ships only `dist/` (the `files` field is `["dist", "README.md", "LICENSE"]`); `dist/` is gitignored and rebuilt automatically on `prepack`, so build output is never committed. Run `bun run build` to produce it locally.
 
 ## Making changes
 
