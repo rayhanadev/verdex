@@ -14,7 +14,7 @@ A minimal reproduction is the fastest way to a fix. Please include:
 
 1. The policy/rule definition involved
 2. The input/context being evaluated
-3. The call you made (e.g. `engine.evaluate(...)`)
+3. The query you made (e.g. `engine.authz.allow({ input })`)
 4. The result you got
 
 ```ts

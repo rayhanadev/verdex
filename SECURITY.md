@@ -18,7 +18,7 @@ If you discover a security vulnerability within verdex, please report it respons
 Instead, please report it privately through one of these channels:
 
 - **Preferred:** Open a private report via GitHub Security Advisories using the **"Report a vulnerability"** button on the [Security tab](https://github.com/rayhanadev/verdex/security/advisories) of the verdex repo.
-- **Fallback:** Send an email to ray@million.dev.
+- **Fallback:** Send an email to me@rayhanadev.com.
 
 You should receive a response within 48 hours. If for some reason you do not, please follow up to ensure your original message was received.
 
