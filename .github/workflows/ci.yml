@@ -51,6 +51,11 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      # Type-checks generated 100-module registries (one bundle, chained add(),
+      # and a long builder chain) under a check-time budget.
+      - name: Type-check performance
+        run: bun run typecheck:perf
+
   test:
     runs-on: ubuntu-latest
     steps:
