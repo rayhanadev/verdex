@@ -1,4 +1,5 @@
 import type { StandardSchemaV1 } from "./schema.ts";
+import type { ClauseRef } from "./types.ts";
 
 /**
  * Base class for every error the policy engine throws on its own. Catch this to
@@ -120,6 +121,79 @@ export class DuplicatePackageError extends PolicyError {
         `each package name must be unique (declare all clauses of a rule in one module)`,
     );
   }
+}
+
+/**
+ * Thrown (or returned by `evaluate()`) when a query document — `input`, per-query
+ * `data`, a `with` value, a `withData` document — or an `object` rule result
+ * contains an own `__proto__`, `prototype` or `constructor` key. Copying such a key
+ * by assignment can replace an object's prototype and let a rule read
+ * attacker-chosen inherited values, so the engine refuses it. Set the engine
+ * option `unsafeKeys: "drop"` to remove these keys instead.
+ */
+export class UnsafeKeyError extends PolicyError {
+  override name = "UnsafeKeyError";
+  constructor(
+    /** The offending key. */
+    public readonly key: string,
+    /** Which document contained it (e.g. `"input"`, `"data"`). */
+    public readonly subject: string,
+  ) {
+    super(`${subject} contains the unsafe key "${key}" (prototype pollution guard)`);
+  }
+}
+
+/**
+ * Thrown when a rule reference (`ctx.<pkg>.<rule>()` or `ctx.query`) reaches a
+ * rule that is still being evaluated in the same query. {@link cycle} lists the
+ * paths in the loop, ending with the repeated path.
+ */
+export class CycleError extends PolicyError {
+  override name = "CycleError";
+  constructor(
+    /** The rule paths in the reference loop, first to last (the last repeats an earlier one). */
+    public readonly cycle: readonly string[],
+  ) {
+    super(`rule reference cycle: ${cycle.join(" -> ")}`);
+  }
+}
+
+/**
+ * Returned by `evaluate()` when a query threw something that is not a
+ * {@link PolicyError} — usually an exception from a rule body. The thrown value is
+ * kept unchanged on {@link cause}; {@link rulePath} and {@link clause} name the
+ * rule clause (or function rule) that was running when it was thrown.
+ */
+export class EvaluationError extends PolicyError {
+  override name = "EvaluationError";
+  /** The queried path. */
+  readonly path: string;
+  /** The rule or function rule that was running when the value was thrown, if any. */
+  readonly rulePath: string | undefined;
+  /** The clause of {@link rulePath} that was running, if the throw came from a clause. */
+  readonly clause: ClauseRef | undefined;
+  /** The value that was thrown, unchanged. */
+  override readonly cause: unknown;
+  constructor(init: { path: string; rulePath?: string; clause?: ClauseRef; cause: unknown }) {
+    const where =
+      init.rulePath === undefined
+        ? `query "${init.path}"`
+        : `rule "${init.rulePath}"${init.clause ? ` clause ${clauseLabel(init.clause)}` : ""}`;
+    super(`${where} threw: ${describe(init.cause)}`);
+    this.path = init.path;
+    this.rulePath = init.rulePath;
+    this.clause = init.clause;
+    this.cause = init.cause;
+  }
+}
+
+function clauseLabel(c: ClauseRef): string {
+  return c.id === undefined ? `#${c.index}` : `"${c.id}"`;
+}
+
+function describe(cause: unknown): string {
+  if (cause instanceof Error) return `${cause.name}: ${cause.message}`;
+  return typeof cause === "string" ? cause : Object.prototype.toString.call(cause);
 }
 
 /**

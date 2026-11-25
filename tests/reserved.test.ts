@@ -3,17 +3,27 @@ import { Engine, RESERVED, module } from "../src/index.ts";
 
 describe("reserved package roots", () => {
   test("RESERVED is exactly the documented set", () => {
+    // 0.3 adds engine members (evaluate, decide, explain, compile, withData, rules,
+    // fingerprint). Each one must be a reserved root, or a package with that name
+    // would be silently shadowed by the member on the engine proxy.
     expect([...RESERVED].toSorted()).toEqual(
       [
         "add",
         "call",
+        "compile",
         "constructor",
         "data",
+        "decide",
+        "evaluate",
+        "explain",
+        "fingerprint",
         "input",
         "modules",
         "put",
         "query",
+        "rules",
         "store",
+        "withData",
       ].toSorted(),
     );
   });
@@ -29,6 +39,20 @@ describe("reserved package roots", () => {
     // "modules" would be shadowed by it instead of routing through the proxy.
     expect(() => module("modules")).toThrow(/reserved/);
     expect(() => module("modules.nested")).toThrow(/reserved/);
+  });
+
+  test("0.3 engine members are reserved roots", () => {
+    for (const name of [
+      "evaluate",
+      "decide",
+      "explain",
+      "compile",
+      "withData",
+      "rules",
+      "fingerprint",
+    ]) {
+      expect(() => module(name)).toThrow(/reserved/);
+    }
   });
 
   test("previously-reserved ctx/engine member names still throw", () => {

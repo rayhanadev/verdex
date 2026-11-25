@@ -188,7 +188,11 @@ describe("schema validation", () => {
     const Input = z.object({ role: z.enum(["admin", "guest"]) });
     const m = module("authz", { input: Input }).complete("allow", () => true);
     const e = new Engine().add(m);
-    expect(() => e.query("authz.allow", { input: { role: "bogus" } })).toThrow(ValidationError);
+    // Since 0.3 the query input is typed by the schema, so "bogus" is a compile
+    // error; cast to exercise the runtime validation an untyped caller still hits.
+    expect(() => e.query("authz.allow", { input: { role: "bogus" as "admin" } })).toThrow(
+      ValidationError,
+    );
   });
 
   test("data validation rejects bad data", () => {

@@ -113,3 +113,36 @@ console.log(
   "\nwith-override (guest -> admin):",
   overridden.defined ? overridden.result : "undefined",
 );
+
+// ---------------------------------------------------------------------------
+// 0.3: decide(), evaluate(), explain() and compile()
+// ---------------------------------------------------------------------------
+const admin = {
+  user: { id: "u1", role: "admin" as const },
+  action: { type: "delete" as const, resource: "doc/1" },
+};
+
+// `allow` has a default, so decide() returns the boolean directly.
+console.log("\ndecide:", engine.decide("authz.allow", { input: admin }));
+
+// evaluate() never throws: failures come back as values.
+const bad = engine.authz.allow.evaluate({
+  input: { ...admin, user: { id: "u9", role: "root" as "admin" } },
+});
+console.log(
+  "evaluate (bad input):",
+  bad.ok ? bad.decision : `${bad.error.name}: ${bad.error.message}`,
+);
+
+// explain() reports what each clause did and which policy decided.
+const why = engine.explain("authz.deny_reasons", {
+  input: { user: { id: "u3", role: "guest" }, action: { type: "write", resource: "doc/1" } },
+});
+console.log(
+  "explain:",
+  JSON.stringify({ decision: why.decision, clauses: why.clauses, policy: why.policy.fingerprint }),
+);
+
+// compile() resolves the path once for hot loops.
+const allow = engine.compile("authz.allow");
+console.log("compiled:", cases.map((c) => allow.decide({ input: c.input })).join(","));

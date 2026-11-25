@@ -2,12 +2,14 @@
 
 ## Supported Versions
 
-verdex is pre-1.0. Only the latest minor release in the `0.1.x` line receives security updates.
+verdex is pre-1.0. Only the latest minor release line receives security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
-| < 0.1   | :x:                |
+| 0.3.x   | :white_check_mark: |
+| < 0.3   | :x:                |
+
+Versions before 0.3.0 copy an own `"__proto__"` key in `input` or `data` with plain assignment when they snapshot a query, which replaces the copy's prototype and can change a policy decision. Upgrade to 0.3.0 or later; on older versions, give every module an input schema that strips unknown keys and keep request-derived JSON out of `data`.
 
 ## Reporting a Vulnerability
 

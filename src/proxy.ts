@@ -1,16 +1,18 @@
-// Type-level: turn a flat `{ "a.b.c": V }` registry into nested `{ a: { b: { c: V } } }`.
+// Type-level helpers for the nested proxy views (`engine.a.b.c`, `ctx.a.b.c`) over a
+// set of dotted paths. The views are mapped types keyed by the next path segment,
+// so a property lookup only computes the segment names at that level, and a
+// subtree is only built when it is accessed. (0.2 built the whole tree eagerly
+// with a UnionToIntersection over every path, which made every `.add()` lookup
+// pay for the full tree.)
 
-type Split<S extends string, V> = S extends `${infer H}.${infer Rest}`
-  ? { [K in H]: Split<Rest, V> }
-  : { [K in S]: V };
+/** The next segment of each dotted path in `K` (`"a.b.c"` → `"a"`; `"x"` → `"x"`). */
+export type Segment<K extends string> = K extends `${infer H}.${string}` ? H : K;
 
-type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void
-  ? I
-  : never;
+/** The rest of each path in `K` below the segment `C` (`"a.b.c"` below `"a"` → `"b.c"`). */
+export type Below<K extends string, C extends string> = K extends `${C}.${infer T}` ? T : never;
 
-export type Tree<R extends Record<string, unknown>> = UnionToIntersection<
-  { [K in keyof R & string]: Split<K, R[K]> }[keyof R & string]
->;
+/** Append the segment `C` to the path prefix `P`. */
+export type Join<P extends string, C extends string> = P extends "" ? C : `${P}.${C}`;
 
 // Properties that must NOT be turned into a dispatchable package path.
 // These are JS-runtime hooks that ordinary operations (await, JSON.stringify,

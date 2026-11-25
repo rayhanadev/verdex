@@ -31,17 +31,18 @@ verdex is a single published package, `@rayhanadev/verdex`. It has zero runtime 
 
 ### Useful commands
 
-| Command              | Description                              |
-| -------------------- | ---------------------------------------- |
-| `bun run test`       | Run the test suite once (`vitest run`)   |
-| `bun run test:watch` | Run tests in watch mode (`vitest`)       |
-| `bun run coverage`   | Run tests with coverage                  |
-| `bun run typecheck`  | Type-check with `tsgo --noEmit`          |
-| `bun run lint`       | Lint with oxlint                         |
-| `bun run format`     | Format with oxfmt                        |
-| `bun run knip`       | Detect dead code and unused dependencies |
-| `bun run build`      | Build with tsdown (smoke test)           |
-| `bun run changeset`  | Add a changeset for a user-facing change |
+| Command                  | Description                               |
+| ------------------------ | ----------------------------------------- |
+| `bun run test`           | Run the test suite once (`vitest run`)    |
+| `bun run test:watch`     | Run tests in watch mode (`vitest`)        |
+| `bun run coverage`       | Run tests with coverage                   |
+| `bun run typecheck`      | Type-check with `tsgo --noEmit`           |
+| `bun run typecheck:perf` | Check type-check time of large registries |
+| `bun run lint`           | Lint with oxlint                          |
+| `bun run format`         | Format with oxfmt                         |
+| `bun run knip`           | Detect dead code and unused dependencies  |
+| `bun run build`          | Build with tsdown (smoke test)            |
+| `bun run changeset`      | Add a changeset for a user-facing change  |
 
 ### Code style
 
@@ -77,7 +78,7 @@ verdex is bundled with [tsdown](https://tsdown.dev): `src/index.ts` is compiled 
 3. Run the full check suite:
 
    ```sh
-   bun run typecheck && bun run lint && bun run knip && bun run test && bun run build
+   bun run typecheck && bun run typecheck:perf && bun run lint && bun run knip && bun run test && bun run build
    ```
 
 4. Commit your changes with a clear message describing the **why**, not just the what.
@@ -98,7 +99,7 @@ Follow the prompts to describe your change. The changeset will be committed alon
 
 - Keep PRs focused — one logical change per PR.
 - Fill in the PR template.
-- CI must be green: typecheck, lint, knip, tests, and build all have to pass.
+- CI must be green: typecheck (including the type-check performance budget), lint, knip, tests, and build all have to pass.
 - A maintainer will review your PR. Be open to feedback and iterate.
 
 ## Reporting bugs

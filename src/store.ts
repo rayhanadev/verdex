@@ -1,9 +1,12 @@
+import { freezeTree, sealNode } from "./snapshot.ts";
 import type { Path } from "./types.ts";
 import { assertSafeKey, splitPath } from "./types.ts";
 
 type JsonObject = { [k: string]: unknown };
 
 const hasOwn = Object.prototype.hasOwnProperty;
+
+const EMPTY_ROOT: JsonObject = sealNode({});
 
 /**
  * A read-only view of the data {@link Store} handed to rule bodies as `ctx.store`.
@@ -19,17 +22,31 @@ export interface ReadonlyStore {
 }
 
 /**
- * The mutable `data` document backing an {@link Engine}. A plain nested JSON object
- * addressed by dotted paths, with reads and writes hardened against prototype
- * pollution (own-property reads only; unsafe keys like `__proto__` are refused on
- * write). Every mutation bumps {@link version}. You usually interact with it through
- * the engine rather than directly.
+ * The `data` document backing an {@link Engine}: a nested JSON object addressed by
+ * dotted paths, with reads and writes hardened against prototype pollution
+ * (own-property reads only; unsafe keys like `__proto__` are refused on write, at
+ * any depth).
+ *
+ * The document is persistent: every write copies the path it changes and freezes
+ * the result, and written values are copied in deep-frozen. A document snapshot
+ * therefore never changes, which lets every query use it without copying it, and
+ * lets engines derived with `add()` share it safely. Every mutation bumps
+ * {@link version}. You usually interact with it through the engine.
  */
 export class Store implements ReadonlyStore {
-  private root: JsonObject = {};
+  private root: JsonObject = EMPTY_ROOT;
   private _version = 0;
+  private facade: ReadonlyStore | undefined;
 
-  /** The current root data object. Treat as read-only; mutate via the methods below. */
+  /** A store that starts from an existing frozen document. @internal */
+  static from(root: unknown, version: number): Store {
+    const s = new Store();
+    s.root = root as JsonObject;
+    s._version = version;
+    return s;
+  }
+
+  /** The current root data object: a deep-frozen snapshot. Mutate via the methods below. */
   get document(): unknown {
     return this.root;
   }
@@ -39,15 +56,22 @@ export class Store implements ReadonlyStore {
     return this._version;
   }
 
-  /** Build a frozen, read-only view of this store for handing to rule contexts. @internal */
+  /** The frozen, read-only view of this store handed to rule contexts. @internal */
   asReadonly(): ReadonlyStore {
+    if (this.facade) return this.facade;
     const store = this;
-    return Object.freeze({
+    this.facade = Object.freeze({
       get: (path: Path) => store.get(path),
       get version() {
         return store.version;
       },
     });
+    return this.facade;
+  }
+
+  /** A new store with the same document and version; later writes to either stay separate. @internal */
+  fork(): Store {
+    return Store.from(this.root, this._version);
   }
 
   /**
@@ -55,7 +79,7 @@ export class Store implements ReadonlyStore {
    * polluted members never surface.
    *
    * @param path - dotted string or segment array
-   * @returns the value at the path, or `undefined` if any segment is missing
+   * @returns the value at the path (deep-frozen), or `undefined` if any segment is missing
    */
   get(path: Path): unknown {
     const segments = splitPath(path);
@@ -74,12 +98,14 @@ export class Store implements ReadonlyStore {
 
   /**
    * Write `value` at `path`, creating intermediate objects as needed. An empty
-   * path replaces the entire root, which must then be a plain object.
+   * path replaces the entire root, which must then be a plain object. The store
+   * keeps a deep-frozen copy of `value` (a deep-frozen `value` is kept as-is), so
+   * later changes to the caller's object do not reach the store.
    *
    * @param path - dotted string or segment array; empty path targets the root
    * @param value - the value to store
-   * @throws {TypeError} if a path segment is an unsafe key, or if replacing the
-   *   root with a non-object
+   * @throws {TypeError} if a path segment or any key inside `value` is an unsafe
+   *   key, or if replacing the root with a non-object
    */
   put(path: Path, value: unknown): void {
     const segments = splitPath(path);
@@ -87,27 +113,17 @@ export class Store implements ReadonlyStore {
       if (value === null || typeof value !== "object" || Array.isArray(value)) {
         throw new TypeError("root data document must be an object");
       }
-      for (const k of Object.keys(value as JsonObject)) {
-        assertSafeKey(k, "data document root");
-      }
-      this.root = { ...(value as JsonObject) };
+      // A non-plain root (e.g. a class instance) is flattened to a plain object, as in 0.2.
+      const proto = Object.getPrototypeOf(value);
+      const plain = proto === Object.prototype || proto === null ? value : { ...value };
+      this.root = freezeTree(plain as JsonObject, "type", "data document root", true);
       this._version++;
       return;
     }
-    for (const seg of segments) assertSafeKey(seg, `put path "${segments.join(".")}"`);
-    let cur: JsonObject = this.root;
-    for (let i = 0; i < segments.length - 1; i++) {
-      const seg = segments[i]!;
-      const next = cur[seg];
-      if (next === undefined || next === null || typeof next !== "object" || Array.isArray(next)) {
-        const fresh: JsonObject = {};
-        cur[seg] = fresh;
-        cur = fresh;
-      } else {
-        cur = next as JsonObject;
-      }
-    }
-    cur[segments[segments.length - 1]!] = value;
+    const where = `put path "${segments.join(".")}"`;
+    for (const seg of segments) assertSafeKey(seg, where);
+    const frozen = freezeTree(value, "type", `value at ${where}`, true);
+    this.root = setPath(this.root, segments, 0, frozen);
     this._version++;
   }
 
@@ -121,59 +137,85 @@ export class Store implements ReadonlyStore {
   delete(path: Path): boolean {
     const segments = splitPath(path);
     if (segments.length === 0) {
-      this.root = {};
+      this.root = EMPTY_ROOT;
       this._version++;
       return true;
     }
     for (const seg of segments) assertSafeKey(seg, `delete path "${segments.join(".")}"`);
-    let cur: JsonObject = this.root;
-    for (let i = 0; i < segments.length - 1; i++) {
-      const seg = segments[i]!;
-      if (!hasOwn.call(cur, seg)) return false;
-      const next = cur[seg];
-      if (next === null || typeof next !== "object" || Array.isArray(next)) {
-        return false;
-      }
-      cur = next as JsonObject;
-    }
-    const last = segments[segments.length - 1]!;
-    if (hasOwn.call(cur, last)) {
-      delete cur[last];
-      this._version++;
-      return true;
-    }
-    return false;
+    const next = deletePath(this.root, segments, 0);
+    if (next === undefined) return false;
+    this.root = next;
+    this._version++;
+    return true;
   }
 
   /**
    * Recursively merge `obj` into the document: nested plain objects are merged
-   * key by key, while arrays and primitives overwrite.
+   * key by key, while arrays and primitives overwrite. The merge is atomic: a
+   * rejected key leaves the document unchanged.
    *
    * @param obj - the object to deep-merge into the root
    * @throws {TypeError} if any merged key is an unsafe key
    */
   merge(obj: JsonObject): void {
-    deepMerge(this.root, obj);
+    this.root = mergeInto(this.root, obj);
     this._version++;
   }
 }
 
-function deepMerge(target: JsonObject, source: JsonObject): void {
+function isRecord(v: unknown): v is JsonObject {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+// Copy `node` with `value` written at `segments[i..]`. Intermediate values that are
+// missing or not plain objects are replaced by fresh objects, as in 0.2.
+function setPath(
+  node: JsonObject,
+  segments: readonly string[],
+  i: number,
+  value: unknown,
+): JsonObject {
+  const key = segments[i]!;
+  const out: JsonObject = { ...node };
+  if (i === segments.length - 1) {
+    out[key] = value;
+  } else {
+    const next = hasOwn.call(node, key) ? node[key] : undefined;
+    out[key] = setPath(isRecord(next) ? next : EMPTY_ROOT, segments, i + 1, value);
+  }
+  return sealNode(out);
+}
+
+// Copy `node` without the entry at `segments[i..]`, or return undefined when the
+// path is absent (so the caller can report a no-op without bumping the version).
+function deletePath(
+  node: JsonObject,
+  segments: readonly string[],
+  i: number,
+): JsonObject | undefined {
+  const key = segments[i]!;
+  if (!hasOwn.call(node, key)) return undefined;
+  if (i === segments.length - 1) {
+    const out: JsonObject = { ...node };
+    delete out[key];
+    return sealNode(out);
+  }
+  const next = node[key];
+  if (!isRecord(next)) return undefined;
+  const child = deletePath(next, segments, i + 1);
+  if (child === undefined) return undefined;
+  return sealNode({ ...node, [key]: child });
+}
+
+function mergeInto(target: JsonObject, source: JsonObject): JsonObject {
+  const out: JsonObject = { ...target };
   for (const [k, v] of Object.entries(source)) {
     assertSafeKey(k, "merged data document");
-    const existing = target[k];
-    if (
-      existing !== undefined &&
-      existing !== null &&
-      typeof existing === "object" &&
-      !Array.isArray(existing) &&
-      v !== null &&
-      typeof v === "object" &&
-      !Array.isArray(v)
-    ) {
-      deepMerge(existing as JsonObject, v as JsonObject);
-    } else {
-      target[k] = v;
-    }
+    const existing = hasOwn.call(target, k) ? target[k] : undefined;
+    out[k] =
+      isRecord(existing) && isRecord(v)
+        ? mergeInto(existing, v)
+        : freezeTree(v, "type", "merged data document", true);
   }
+  return sealNode(out);
 }

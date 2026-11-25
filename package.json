@@ -60,6 +60,7 @@
     "format": "oxfmt",
     "knip": "knip",
     "typecheck": "tsgo --noEmit",
+    "typecheck:perf": "bun scripts/type-perf.ts",
     "version": "changeset version",
     "release": "bun run build && npm publish"
   },
